@@ -1,5 +1,4 @@
 // BusinessTransferEngine.cpp : 定义控制台应用程序的入口点。
-//
 
 #include "stdafx.h"
 
@@ -13,13 +12,11 @@ enum OperatorAnswer{SUCCESS,FAIL,UNKNOW};
 const char g_answer_string[3][10]={"Success","Fail","Unknow"};
 
 enum BussinessOperatorType {LocalCheck,TradeFreeze,AvailCheck,BankOut,TradeOut,LocalOut,TradeUnfreeze,TradeUnout,BankUnout1,BankUnout2};
-
-typedef int (* BussinessFunc)(int BussinessNo);
+const char g_oper_name[MAX_OPERATOR][20] ={"LocalCheck","TradeFreeze","AvailCheck","BankOut","TradeOut","LocalOut","TradeUnfreeze","TradeUnout","BankUnout1","BankUnout2"};
 
 struct stBussinessOperator
 {
-	char* Note;
-	BussinessFunc Execute;
+	int oid;
 	struct stBussinessOperator *SuccessOperator;
 	struct stBussinessOperator *FailOperator;
 	struct stBussinessOperator *UnknowOperator;
@@ -52,64 +49,19 @@ int MockOperator(int tid,int oid)
 	{
 		rt = p->Answer;
 	}
-	printf("Transfer(%d).%s:%s\n",tid,g_bolist[oid].Note,g_answer_string[rt]);
+	printf("Transfer(%d).%s:%s\n",tid,g_oper_name[oid],g_answer_string[rt]);
 	return rt;
 }
 
-int MockLocalCheck(int id)
+int ExecOperator(int tid,int oid)
 {
-	return MockOperator(id,LocalCheck);
+	return MockOperator(tid,oid);
 }
 
-int MockTradeFreeze(int id)
-{
-	return MockOperator(id,TradeFreeze);
-}
 
-int MockAvailCheck(int id)
+void InitOneBussinessOperator(int id,int success,int fail,int unknow)
 {
-	return MockOperator(id,AvailCheck);
-}
-
-int MockBankOut(int id)
-{
-	return MockOperator(id,BankOut);
-}
-
-int MockTradeOut(int id)
-{
-	return MockOperator(id,TradeOut);
-}
-
-int MockLocalOut(int id)
-{
-	return MockOperator(id,LocalOut);
-}
-
-int MockTradeUnfreeze(int id)
-{
-	return MockOperator(id,TradeUnfreeze);
-}
-
-int MockTradeUnout(int id)
-{
-	return MockOperator(id,TradeUnout);
-}
-
-int MockBankUnout1(int id)
-{
-	return MockOperator(id,BankUnout1);
-}
-
-int MockBankUnout2(int id)
-{
-	return MockOperator(id,BankUnout2);
-}
-
-void InitOneBussinessOperator(int id,char* note,BussinessFunc func,int success,int fail,int unknow)
-{
-	g_bolist[id].Note = note;
-	g_bolist[id].Execute = func;
+	g_bolist[id].oid = id;
 	g_bolist[id].SuccessOperator = (success >= 0 ? &g_bolist[success]:0);
 	g_bolist[id].FailOperator = (fail >= 0 ? &g_bolist[fail]:0);
 	g_bolist[id].UnknowOperator = (unknow >= 0 ? &g_bolist[unknow]:0);
@@ -117,16 +69,16 @@ void InitOneBussinessOperator(int id,char* note,BussinessFunc func,int success,i
 
 bool InitBussinessOperatorList()
 {
-	InitOneBussinessOperator(LocalCheck,"LocalCheck",MockLocalCheck,TradeFreeze,-1,LocalCheck);
-	InitOneBussinessOperator(TradeFreeze,"TradeFreeze",MockTradeFreeze,AvailCheck,-1,TradeFreeze);
-	InitOneBussinessOperator(AvailCheck,"AvailCheck",MockAvailCheck,BankOut,TradeUnfreeze,AvailCheck);
-	InitOneBussinessOperator(BankOut,"BankOut",MockBankOut,TradeOut,TradeUnfreeze,BankOut);
-	InitOneBussinessOperator(TradeOut,"TradeOut",MockTradeOut,LocalOut,BankUnout1,TradeOut);
-	InitOneBussinessOperator(LocalOut,"LocalOut",MockLocalOut,-1,BankUnout2,LocalOut);
-	InitOneBussinessOperator(TradeUnfreeze,"TradeUnfreeze",MockTradeUnfreeze,-1,TradeUnfreeze,TradeUnfreeze);
-	InitOneBussinessOperator(TradeUnout,"TradeUnout",MockTradeUnout,-1,TradeUnout,TradeUnout);
-	InitOneBussinessOperator(BankUnout1,"BankUnout1",MockBankUnout1,TradeUnfreeze,BankUnout1,BankUnout1);
-	InitOneBussinessOperator(BankUnout2,"BankUnout2",MockBankUnout2,TradeUnout,BankUnout2,BankUnout2);
+	InitOneBussinessOperator(LocalCheck,TradeFreeze,-1,LocalCheck);
+	InitOneBussinessOperator(TradeFreeze,AvailCheck,-1,TradeFreeze);
+	InitOneBussinessOperator(AvailCheck,BankOut,TradeUnfreeze,AvailCheck);
+	InitOneBussinessOperator(BankOut,TradeOut,TradeUnfreeze,BankOut);
+	InitOneBussinessOperator(TradeOut,LocalOut,BankUnout1,TradeOut);
+	InitOneBussinessOperator(LocalOut,-1,BankUnout2,LocalOut);
+	InitOneBussinessOperator(TradeUnfreeze,-1,TradeUnfreeze,TradeUnfreeze);
+	InitOneBussinessOperator(TradeUnout,-1,TradeUnout,TradeUnout);
+	InitOneBussinessOperator(BankUnout1,TradeUnfreeze,BankUnout1,BankUnout1);
+	InitOneBussinessOperator(BankUnout2,TradeUnout,BankUnout2,BankUnout2);
 
 	g_bohead = &g_bolist[LocalCheck];
 	return true;
@@ -226,7 +178,7 @@ void ProcessTransfer(int ID)
 			break;
 		}
 
-		ret = p->Execute(ID);
+		ret = ExecOperator(ID,p->oid);
 		switch(ret)
 		{
 			case SUCCESS:
